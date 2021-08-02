@@ -16,35 +16,71 @@ import { Translate24 } from "@carbon/icons-react";
 import "./App.scss";
 
 const App = () => {
-  const url = "https://api.us-south.language-translator.watson.cloud.ibm.com/instances/14f4fd70-e199-4153-9e86-162839bda72b";
+  const [availableLanguagesMap, setAvailableLanguagesMap] = useState();
   const [availableLanguages, setAvailableLanguages] = useState([]);
   const [detectedLanguage, setDetectedLanguage] = useState("");
   const [inputText, setInputText] = useState("");
+  const [translatedText, setTranslatedText] = useState("");
+  const [sourceLang, setSourceLang] = useState("");
+  const [targetLang, setTargetLang] = useState("");
 
   const detectLanguage = (text) => {
-    if (text !== undefined && text !== null && String(text).length > 0 && inputText !== String(text)) {
-      console.log("detecting language..."); // TODO: Use the IBM Watson API to detect the language of the given text.
-      setInputText(String(text));
-      setDetectedLanguage(""); // TODO: Set detected language from response.
+    if (typeof text === "string" && text.length > 0 && inputText !== text) {
+      fetch(`${process.env.REACT_APP_BACKEND_HOST}/api/v1/translate-text/detect-language`, {
+        method: "POST",
+        body: text
+      })
+      .then(response => response.json())
+      .then(({ languages }) => {
+        setDetectedLanguage(availableLanguagesMap[languages[0].language]);
+        setSourceLang(languages[0].language);
+      })
+      .catch(error => console.log(error));
+      setInputText(text);
     }
   };
 
   const translateText = () => {
-    console.log("translating text..."); // TODO: Fetch translation from IBM Watson API.
+    if (inputText.length > 0 && targetLang.length !== "") {
+      const translateParams = {
+        text: inputText,
+        source: sourceLang,
+        target: targetLang,
+      };
+      fetch(`${process.env.REACT_APP_BACKEND_HOST}/api/v1/translate-text/translate`, {
+        method: "POST",
+        body: JSON.stringify(translateParams),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+      .then(response => response.json())
+      .then(translations => setTranslatedText(translations[0].translation))
+      .catch(error => console.log(error));
+    }
   };
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/translate-text/languages")
+    fetch(`${process.env.REACT_APP_BACKEND_HOST}/api/v1/translate-text/languages`)
     .then((response) => response.json())
-    .then((languages) => console.log(JSON.stringify(languages)));
-    setAvailableLanguages(["English", "Spanish"]); // TODO: Use the IBM Watson API to retreive the available languages.
+    .then(({ languages} ) => {
+      if (!Array.isArray(languages)) return; // Error handling should be done here
+
+      // Define languages list for dropdown
+      setAvailableLanguages(languages.map(lang => ({ language: lang.language, language_name: lang.language_name })));
+
+      // Define available languages for optimized search in language detection
+      let languageMap = {};
+      languages.forEach(lang => languageMap[lang.language] = lang.language_name);
+      setAvailableLanguagesMap(languageMap);
+    });
   }, []);
 
   return (
     <>
       <Header aria-label="text-translator" title="text-translator">
         <HeaderName
-          href="#"
+          href="/"
           prefix={
             <span>
               <Translate24 />
@@ -83,9 +119,11 @@ const App = () => {
                 helperText=""
                 label="Language"
                 items={availableLanguages}
+                itemToString={item => item.language_name}
+                onChange={({ selectedItem }) => setTargetLang(selectedItem.language)}
               />
               <br />
-              <TextArea readOnly />
+              <TextArea readOnly value={translatedText} />
             </Column>
           </Row>
           <br />
