@@ -23,10 +23,11 @@ const App = () => {
   const [translatedText, setTranslatedText] = useState("");
   const [sourceLang, setSourceLang] = useState("");
   const [targetLang, setTargetLang] = useState("");
+  const HOST = process.env.REACT_APP_BACKEND_HOST || "http://localhost:8000";
 
   const detectLanguage = (text) => {
     if (typeof text === "string" && text.length > 0 && inputText !== text) {
-      fetch(`${process.env.REACT_APP_BACKEND_HOST}/api/v1/translate-text/detect-language`, {
+      fetch(`${HOST}/api/v1/text-translator/detect-language`, {
         method: "POST",
         body: text
       })
@@ -47,7 +48,7 @@ const App = () => {
         source: sourceLang,
         target: targetLang,
       };
-      fetch(`${process.env.REACT_APP_BACKEND_HOST}/api/v1/translate-text/translate`, {
+      fetch(`${HOST}/api/v1/text-translator/translate`, {
         method: "POST",
         body: JSON.stringify(translateParams),
         headers: {
@@ -61,7 +62,7 @@ const App = () => {
   };
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_BACKEND_HOST}/api/v1/translate-text/languages`)
+    fetch(`${HOST}/api/v1/text-translator/languages`)
     .then((response) => response.json())
     .then(({ languages} ) => {
       if (!Array.isArray(languages)) return; // Error handling should be done here
